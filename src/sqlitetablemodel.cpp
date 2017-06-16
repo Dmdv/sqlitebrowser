@@ -3,13 +3,13 @@
 #include "sqlite.h"
 #include "Settings.h"
 
-#include <QDebug>
 #include <QMessageBox>
 #include <QApplication>
 #include <QTextCodec>
 #include <QMimeData>
 #include <QFile>
 #include <QUrl>
+#include <QDebug>
 
 SqliteTableModel::SqliteTableModel(DBBrowserDB& db, QObject* parent, size_t chunkSize, const QString& encoding)
     : QAbstractTableModel(parent)
@@ -39,13 +39,18 @@ void SqliteTableModel::setChunkSize(size_t chunksize)
     m_chunkSize = chunksize;
 }
 
-#include <QDebug>
+#include "MainWindow.h"
 void SqliteTableModel::setTable(const QString& table, int sortColumn, Qt::SortOrder sortOrder, const QVector<QString>& display_format)
 {
-    qDebug() << "-----------";
-    qDebug() << table;
-    qDebug() << sortColumn;
-    qDebug() << sortOrder;
+    MainWindow* mw = qobject_cast<MainWindow*>(parent());
+    if(mw)
+    {
+        mw->logSql("-----------", kLogMsg_User);
+        mw->logSql(table, kLogMsg_User);
+        mw->logSql(QString::number(sortColumn), kLogMsg_User);
+        mw->logSql(QString::number(sortOrder), kLogMsg_User);
+        QMessageBox::information(0, "", "");
+    }
 
     // Unset all previous settings. When setting a table all information on the previously browsed data set is removed first.
     reset();
@@ -61,11 +66,19 @@ void SqliteTableModel::setTable(const QString& table, int sortColumn, Qt::SortOr
     bool allOk = false;
     if(m_db.getObjectByName(table)->type() == sqlb::Object::Types::Table)
     {
-        qDebug() << "is table";
+        if(mw)
+        {
+            mw->logSql("is table", kLogMsg_User);
+            QMessageBox::information(0, "", "");
+        }
         sqlb::TablePtr t = m_db.getObjectByName(table).dynamicCast<sqlb::Table>();
         if(t && t->fields().size()) // parsing was OK
         {
-            qDebug() << "parsing ok";
+            if(mw)
+            {
+                mw->logSql("parsing ok", kLogMsg_User);
+                QMessageBox::information(0, "", "");
+            }
             m_headers.push_back(t->rowidColumn());
             m_headers.append(t->fieldNames());
 
@@ -91,7 +104,11 @@ void SqliteTableModel::setTable(const QString& table, int sortColumn, Qt::SortOr
     // NOTE: It would be nice to eventually get rid of this piece here. As soon as the grammar parser is good enough...
     if(!allOk)
     {
-        qDebug() << "not parsed";
+        if(mw)
+        {
+            mw->logSql("not parsed", kLogMsg_User);
+            QMessageBox::information(0, "", "");
+        }
         QString sColumnQuery = QString::fromUtf8("SELECT * FROM %1;").arg(sqlb::escapeIdentifier(table));
         m_headers.push_back("rowid");
         m_headers.append(getColumns(sColumnQuery, m_vDataTypes));
@@ -101,9 +118,17 @@ void SqliteTableModel::setTable(const QString& table, int sortColumn, Qt::SortOr
     // current sort order is always changed and thus buildQuery() is always going to be called.
     // This is also why we don't need to call buildQuery() here again.
     m_iSortColumn = -1;
-    qDebug() << "sorting";
+    if(mw)
+    {
+        mw->logSql("sorting", kLogMsg_User);
+        QMessageBox::information(0, "", "");
+    }
     sort(sortColumn, sortOrder);
-    qDebug() << "done";
+    if(mw)
+    {
+        mw->logSql("done", kLogMsg_User);
+        QMessageBox::information(0, "", "");
+    }
 }
 
 namespace {
